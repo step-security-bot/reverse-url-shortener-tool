@@ -16,7 +16,7 @@ SHORTURL_DOMAINS = {
     # "https://tinyurl.com/": 6,
 }
 
-MAX_ITERATIONS = 2
+MAX_ITERATIONS = 1
 CHARACTERS = string.ascii_letters + string.digits
 
 
@@ -55,7 +55,7 @@ def main():
     print("Searching for available short URLs...\n")
 
     # Create a ThreadPoolExecutor instance that will allow us to run multiple tasks concurrently
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         # Create an empty list to store the futures (i.e. tasks) that we will submit to the executor
         futures = []
 
