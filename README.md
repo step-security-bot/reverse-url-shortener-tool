@@ -9,3 +9,9 @@ If so, you are at risk!
 ```python
 python ./preview.py
 ```
+
+or 
+```python
+python ./main.py
+```
+
