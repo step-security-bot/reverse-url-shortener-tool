@@ -12,6 +12,7 @@ import string
 SHORTURL_DOMAINS = {
     "https://t.ly/": 4,
     # "https://shorturl.lol/": 4,
+    # "https://rb.gy/": 5,
     # "https://www.shorturl.at/": 5,
     # "https://tinyurl.com/": 6,
 }
@@ -29,9 +30,9 @@ def get_url_available(domain, path):
     """Check if a short URL is available."""
     try:
         url = domain + path
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=10)
         response.encoding = "utf-8"
-        response.raise_for_status()  # raise exception if status code >= 400
+        # response.raise_for_status()  # raise exception if status code >= 400
         if response.history and response.url != domain:
             return f"{url} -> {response.url}\n"
     except requests.exceptions.RequestException:
