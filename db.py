@@ -7,7 +7,18 @@ import concurrent.futures
 import random
 import requests
 import string
+import sqlite3
 
+# Connect to the DB (will be create if not exist)
+conn = sqlite3.connect('my_database.db')
+cursor = conn.cursor()
+data = list()
+
+# Create table 
+cursor.execute('''CREATE TABLE IF NOT EXISTS base (
+                    short_url INTEGER,
+                    output_url TEXT
+                )''')
 
 SHORTURL_DOMAINS = {
     "https://t.ly/": 4,
@@ -34,6 +45,7 @@ def get_url_available(domain, path):
         response.encoding = "utf-8"
         # response.raise_for_status()  # raise exception if status code >= 400
         if response.history and response.url != domain:
+            data.append((url, response.url))
             return f"{url} -> {response.url}\n"
     except requests.exceptions.RequestException:
         pass
@@ -82,8 +94,19 @@ def main():
                 print(result)
 
 
+# Guardar los cambios y cerrar la conexión
+if data:
+    cursor.executemany('INSERT INTO base VALUES (?, ?)', data)
+    conn.commit()
+# conn.close()
+
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
+        if data:
+            print(data)
+            cursor.executemany('INSERT INTO base VALUES (?, ?)', data)
+            conn.commit()
+        conn.close()
         print("\n\nUser interruption. Exiting...")
