@@ -2,3 +2,5 @@
 *.db
 *.csv
 /.vscode
+node_modules
+package-lock.json
