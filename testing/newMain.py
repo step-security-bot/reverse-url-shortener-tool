@@ -36,27 +36,33 @@ def start_process(characters: str, domain_option: int) -> None:
         indices = [0] * domain_length
 
     # Executor
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
     # Generar las permutaciones iterativamente
+    futures = []
+    iter = int()
     while True:
+        iter += 1
         # Permutación actual usando el arreglo de índices y la lista de caracteres
         path = "".join([characters[i] for i in indices])
 
         # Crear una lista vacía para almacenar los futuros (tareas) que enviaremos al executor
-        futures = []
 
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
         futures.append(executor.submit(get_url_available, domain, path))
 
-        # Iterar sobre cada futuro completado en la lista de futuros
-        for future in concurrent.futures.as_completed(futures):
-            # Obtener el resultado del futuro completado
-            result = future.result()
+        # Cada 20 iteraciones, se verifica los resultados
+        if iter % 20 == 0:
+            print(iter)
+            # Iterar sobre cada futuro completado en la lista de futuros
+            for future in concurrent.futures.as_completed(futures):
+                # Obtener el resultado del futuro completado
+                result = future.result()
 
-            # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
-            if result is not None:
-                print(result)
+                # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
+                if result is not None:
+                    print(result)
+            futures = []
 
         # Encontrar el siguiente índice a incrementar
         i = domain_length - 1
