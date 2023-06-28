@@ -8,6 +8,7 @@ from time import sleep
 import concurrent.futures, requests
 
 CHARACTERS = string.ascii_letters + string.digits
+PRODUCTION = os.getenv("PRODUCTION")
 
 SHORTURL_DOMAINS = {
     "https://t.ly/": 4,
@@ -53,7 +54,6 @@ def start_process(characters: str, domain_option: int) -> None:
 
         # Cada 20 iteraciones, se verifica los resultados
         if iter % 20 == 0:
-            print(iter)
             # Iterar sobre cada futuro completado en la lista de futuros
             for future in concurrent.futures.as_completed(futures):
                 # Obtener el resultado del futuro completado
@@ -132,17 +132,21 @@ def load_state(filename: str):
 def main() -> None:
     global domain_option
 
-    # Seleccionar un dominio
-    counter = 1
+    if PRODUCTION:
+        domain_option = 1
+        start_process(CHARACTERS, domain_option)
+    else:
+        # Seleccionar un dominio
+        counter = 1
 
-    for key in SHORTURL_DOMAINS.keys():
-        print(f"{counter}. {key}")
-        counter += 1
+        for key in SHORTURL_DOMAINS.keys():
+            print(f"{counter}. {key}")
+            counter += 1
 
-    domain_option = int(input("\nIngrese una opción (1 - 5): ")) - 1
-    print()
+        domain_option = int(input("\nIngrese una opción (1 - 5): ")) - 1
+        print()
 
-    start_process(CHARACTERS, domain_option)
+        start_process(CHARACTERS, domain_option)
 
 
 if __name__ == "__main__":
@@ -150,7 +154,10 @@ if __name__ == "__main__":
         main()
 
     except:
-        # Guardar el estado en un archivo
-        save_state(f"state_{domain_option}.pkl", indices)
+        try:
+            # Guardar el estado en un archivo
+            save_state(f"state_{domain_option}.pkl", indices)
+            print("\n\nEstado de ejecución guardado")
+        except:
+            print("\n\nError")
 
-        print("\n\nEstado de ejecución guardado")
