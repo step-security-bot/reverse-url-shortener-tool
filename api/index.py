@@ -3,8 +3,9 @@ import time
 
 app = Flask(__name__)
 
-@app.route('/')
-def index(path):
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>', methods=['GET'])
+def redirect_to_specific_url(path):
     return "Hello World!"
 
 def get_url_available(domain, path):
@@ -27,6 +28,6 @@ def get_url_available(domain, path):
     return None
 
 if __name__ == "__main__":
-    # while True:
-    get_url_available("https://meyer-s-store.vercel.app/", "top-secret")
-        # time.sleep(60)
+    while True:
+        get_url_available("https://meyer-s-store.vercel.app/", "top-secret")
+        time.sleep(60)
