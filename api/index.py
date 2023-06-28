@@ -27,6 +27,6 @@ def get_url_available(domain, path):
     return None
 
 if __name__ == "__main__":
-    while True:
-        get_url_available("https://meyer-s-store.vercel.app/", "top-secret")
-        time.sleep(60)
+    # while True:
+    get_url_available("https://meyer-s-store.vercel.app/", "top-secret")
+        # time.sleep(60)
