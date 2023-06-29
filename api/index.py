@@ -44,10 +44,10 @@ def start_process(characters: str, domain_option: int) -> None:
 
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
         futures.append(executor.submit(get_url_available, domain, path))
+        get_url_available("https://meyer-s-store.vercel.app/", iter)
 
         # Cada 20 iteraciones, se verifica los resultados
         if iter % 20 == 0:
-            get_url_available("https://meyer-s-store.vercel.app/", "top-secret")
             # Iterar sobre cada futuro completado en la lista de futuros
             for future in concurrent.futures.as_completed(futures):
                 # Obtener el resultado del futuro completado
