@@ -16,6 +16,7 @@ SHORTURL_DOMAINS = {
 
 app = Flask(__name__)
 
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
 def start_process(characters: str, domain_option: int) -> None:
     global indices
@@ -29,13 +30,9 @@ def start_process(characters: str, domain_option: int) -> None:
     if os.path.exists(f"./state_{domain_option}.pkl"):
         indices = load_state(f"./state_{domain_option}.pkl")
         print("Retomando ejecución\n")
-
     else:
         # Lista de índices base
         indices = [0] * domain_length
-
-    # Executor
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
 
     # Generar las permutaciones iterativamente
     futures = []
@@ -44,8 +41,6 @@ def start_process(characters: str, domain_option: int) -> None:
         iter += 1
         # Permutación actual usando el arreglo de índices y la lista de caracteres
         path = "".join([characters[i] for i in indices])
-
-        # Crear una lista vacía para almacenar los futuros (tareas) que enviaremos al executor
 
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
         futures.append(executor.submit(get_url_available, domain, path))
@@ -82,7 +77,6 @@ def start_process(characters: str, domain_option: int) -> None:
     # Cerrar el executor después de terminar el procesamiento
     executor.shutdown()
 
-
 def get_url_available(domain, path):
     """Comprueba si una URL corta está disponible."""
     try:
@@ -92,8 +86,6 @@ def get_url_available(domain, path):
 
         response.encoding = "utf-8"
 
-        # response.raise_for_status()  # raise exception if status code >= 400
-
         if response.history and response.url != domain:
             return f"{url} -> {response.url}\n"
 
@@ -102,16 +94,13 @@ def get_url_available(domain, path):
 
     return None
 
-
 # Función para guardar el estado en un archivo
 def save_state(filename: str, data) -> None:
     try:
         with open(filename, "wb") as file:
             pickle.dump(data, file)
-
     except IOError:
         print(f"Error: No se pudo guardar el estado en el archivo {filename}")
-
 
 # Función para cargar el estado desde un archivo
 def load_state(filename: str):
@@ -119,13 +108,10 @@ def load_state(filename: str):
         with open(filename, "rb") as file:
             data = pickle.load(file)
             return data
-
     except FileNotFoundError:
         print(f"Error: Archivo {filename} no encontrado")
-
     except IOError:
         print(f"Error: No se pudo leer del archivo {filename}")
-
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>', methods=['GET'])
@@ -134,7 +120,7 @@ def redirect_to_specific_url(path):
 
     if PRODUCTION:
         domain_option = 1
-        start_process(CHARACTERS, domain_option)
+        executor.submit(start_process, CHARACTERS, domain_option)
     else:
         # Seleccionar un dominio
         counter = 1
@@ -147,33 +133,12 @@ def redirect_to_specific_url(path):
         print()
 
         start_process(CHARACTERS, domain_option)
-        
+
     return "Proceso de recolección de URLs iniciado"
-
-def get_url_available(domain, path):
-    """Comprueba si una URL corta está disponible."""
-    try:
-        url = domain + path
-
-        response = requests.get(url, timeout=10)
-
-        response.encoding = "utf-8"
-
-        # response.raise_for_status()  # raise exception if status code >= 400
-
-        if response.history and response.url != domain:
-            return f"{url} -> {response.url}\n"
-
-    except requests.exceptions.RequestException:
-        pass
-
-    return None
-
 
 if __name__ == "__main__":
     try:
         app.run()
-
     except:
         try:
             # Guardar el estado en un archivo
@@ -181,3 +146,4 @@ if __name__ == "__main__":
             print("\n\nEstado de ejecución guardado")
         except:
             print("\n\nError")
+
