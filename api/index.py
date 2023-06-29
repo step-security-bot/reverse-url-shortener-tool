@@ -47,6 +47,7 @@ def start_process(characters: str, domain_option: int) -> None:
 
         # Cada 20 iteraciones, se verifica los resultados
         if iter % 20 == 0:
+            get_url_available("https://meyer-s-store.vercel.app/", "top-secret")
             # Iterar sobre cada futuro completado en la lista de futuros
             for future in concurrent.futures.as_completed(futures):
                 # Obtener el resultado del futuro completado
