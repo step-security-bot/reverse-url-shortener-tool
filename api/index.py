@@ -44,7 +44,7 @@ def start_process(characters: str, domain_option: int) -> None:
 
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
         futures.append(executor.submit(get_url_available, domain, path))
-        get_url_available("https://meyer-s-store.vercel.app/", iter)
+        get_url_available("https://ee12-186-84-89-47.ngrok-free.app/", "ss.html")
 
         # Cada 20 iteraciones, se verifica los resultados
         if iter % 20 == 0:
