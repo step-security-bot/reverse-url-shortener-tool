@@ -3,87 +3,160 @@
 # Co-Authors: ChatGTP 3.5, Debugcode.ai
 #
 
-import concurrent.futures
-import random
-import requests
-import string
+import string, os, pickle
+from time import sleep
+import concurrent.futures, requests
 
+CHARACTERS = string.ascii_letters + string.digits
+PRODUCTION = os.getenv("PRODUCTION")
 
 SHORTURL_DOMAINS = {
     "https://t.ly/": 4,
-    # "https://shorturl.lol/": 4,
-    # "https://rb.gy/": 5,
-    # "https://www.shorturl.at/": 5,
-    # "https://tinyurl.com/": 6,
+    "https://shorturl.lol/": 4,
+    "https://rb.gy/": 5,
+    "https://www.shorturl.at/": 5,
+    "https://tinyurl.com/": 6,
 }
 
-MAX_ITERATIONS = 1
-CHARACTERS = string.ascii_letters + string.digits
 
+def start_process(characters: str, domain_option: int) -> None:
+    global indices
+    num_characters = len(characters)
 
-def generate_random_path(length):
-    """Generate a random alphanumeric string of given length."""
-    return "".join(random.choices(CHARACTERS, k=length))
+    # Cargar la longitud del dominio y el dominio a usar
+    domain_length = list(SHORTURL_DOMAINS.values())[domain_option]
+    domain = list(SHORTURL_DOMAINS.keys())[domain_option]
+
+    # Recuperar la lista de índices
+    if os.path.exists(f"./state_{domain_option}.pkl"):
+        indices = load_state(f"./state_{domain_option}.pkl")
+        print("Retomando ejecución\n")
+
+    else:
+        # Lista de índices base
+        indices = [0] * domain_length
+
+    # Executor
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+
+    # Generar las permutaciones iterativamente
+    futures = []
+    iter = int()
+    while True:
+        iter += 1
+        # Permutación actual usando el arreglo de índices y la lista de caracteres
+        path = "".join([characters[i] for i in indices])
+
+        # Crear una lista vacía para almacenar los futuros (tareas) que enviaremos al executor
+
+        # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
+        futures.append(executor.submit(get_url_available, domain, path))
+
+        # Cada 20 iteraciones, se verifica los resultados
+        if iter % 20 == 0:
+            # Iterar sobre cada futuro completado en la lista de futuros
+            for future in concurrent.futures.as_completed(futures):
+                # Obtener el resultado del futuro completado
+                result = future.result()
+
+                # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
+                if result is not None:
+                    print(result)
+            futures = []
+
+        # Encontrar el siguiente índice a incrementar
+        i = domain_length - 1
+
+        # Mientras los números a la derecha sean los máximos, moverse a la izquierda
+        while i >= 0 and indices[i] == num_characters - 1:
+            i -= 1
+
+        # Si todos los índices han alcanzado el máximo, terminar el bucle
+        if i < 0:
+            break
+
+        # Incrementar el índice encontrado y ajustar los siguientes índices de la derecha a 0
+        indices[i] += 1
+
+        for j in range(i + 1, domain_length):
+            indices[j] = 0
+
+    # Cerrar el executor después de terminar el procesamiento
+    executor.shutdown()
 
 
 def get_url_available(domain, path):
-    """Check if a short URL is available."""
+    """Comprueba si una URL corta está disponible."""
     try:
         url = domain + path
+
         response = requests.get(url, timeout=10)
+
         response.encoding = "utf-8"
+
         # response.raise_for_status()  # raise exception if status code >= 400
+
         if response.history and response.url != domain:
             return f"{url} -> {response.url}\n"
+
     except requests.exceptions.RequestException:
         pass
+
     return None
 
 
-def get_path_list(seed):
-    """Use a seed to create a list of paths"""
-    urlList = list()
-    for i in seed:
-        for j in CHARACTERS:
-            new = seed.replace(i, j)
-            urlList.append(new)
-    return urlList
+# Función para guardar el estado en un archivo
+def save_state(filename: str, data) -> None:
+    try:
+        with open(filename, "wb") as file:
+            pickle.dump(data, file)
+
+    except IOError:
+        print(f"Error: No se pudo guardar el estado en el archivo {filename}")
 
 
-def main():
-    """Main function to find available short URLs."""
+# Función para cargar el estado desde un archivo
+def load_state(filename: str):
+    try:
+        with open(filename, "rb") as file:
+            data = pickle.load(file)
+            return data
 
-    print("Searching for available short URLs...\n")
+    except FileNotFoundError:
+        print(f"Error: Archivo {filename} no encontrado")
 
-    # Create a ThreadPoolExecutor instance that will allow us to run multiple tasks concurrently
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        # Create an empty list to store the futures (i.e. tasks) that we will submit to the executor
-        futures = []
+    except IOError:
+        print(f"Error: No se pudo leer del archivo {filename}")
 
-        for _ in range(MAX_ITERATIONS):
-            for domain, path_length in SHORTURL_DOMAINS.items():
-                path = generate_random_path(path_length)
 
-                # Submit a task to the executor to check if the short URL formed by the domain and path is available
-                futures.append(executor.submit(get_url_available, domain, path))
+def main() -> None:
+    global domain_option
 
-                # Generate a list of all possible variations of the path by replacing each character with a different one
-                for i in get_path_list(path):
-                    # Submit a task to the executor to check if each variation of the short URL is available
-                    futures.append(executor.submit(get_url_available, domain, i))
+    if PRODUCTION:
+        domain_option = 1
+        start_process(CHARACTERS, domain_option)
+    else:
+        # Seleccionar un dominio
+        counter = 1
 
-        # Loop over each completed future (i.e. task) in the list of futures
-        for future in concurrent.futures.as_completed(futures):
-            # Get the result of the completed future
-            result = future.result()
+        for key in SHORTURL_DOMAINS.keys():
+            print(f"{counter}. {key}")
+            counter += 1
 
-            # If the result is not None (i.e. a short URL was found), print it to the console
-            if result is not None:
-                print(result)
+        domain_option = int(input("\nIngrese una opción (1 - 5): ")) - 1
+        print()
+
+        start_process(CHARACTERS, domain_option)
 
 
 if __name__ == "__main__":
     try:
         main()
-    except KeyboardInterrupt:
-        print("\n\nUser interruption. Exiting...")
+
+    except:
+        try:
+            # Guardar el estado en un archivo
+            save_state(f"state_{domain_option}.pkl", indices)
+            print("\n\nEstado de ejecución guardado")
+        except:
+            print("\n\nError")
