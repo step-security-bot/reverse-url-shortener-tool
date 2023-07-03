@@ -3,12 +3,13 @@
 # Co-Authors: ChatGTP 3.5, Debugcode.ai
 #
 
+from decouple import config as getenv
 import string, os, pickle
 from time import sleep
 import concurrent.futures, requests
 
 CHARACTERS = string.ascii_letters + string.digits
-PRODUCTION = os.getenv("PRODUCTION")
+PRODUCTION = getenv("PRODUCTION")
 
 SHORTURL_DOMAINS = {
     "https://t.ly/": 4,
@@ -160,4 +161,3 @@ if __name__ == "__main__":
             print("\n\nEstado de ejecución guardado")
         except:
             print("\n\nError")
-
