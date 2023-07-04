@@ -14,7 +14,6 @@ PRODUCTION = getenv("PRODUCTION")
 CHARACTERS = string.ascii_letters + string.digits
 SHORTURL_DOMAINS = {
     "https://t.ly/": 4,
-    "https://shorturl.lol/": 4,
     "https://rb.gy/": 5,
     "https://www.shorturl.at/": 5,
     "https://tinyurl.com/": 6,
@@ -38,7 +37,9 @@ cursor.execute(
         )
     """
 )
+
 conn.commit()
+
 
 def start_process(characters: str, domain_option: int) -> None:
     global indices
@@ -74,7 +75,6 @@ def start_process(characters: str, domain_option: int) -> None:
 
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
         futures.append(executor.submit(get_url_available, domain, path))
-
         # Cada 20 iteraciones, se verifica los resultados
         if iter % 20 == 0:
             # Iterar sobre cada futuro completado en la lista de futuros
@@ -84,13 +84,17 @@ def start_process(characters: str, domain_option: int) -> None:
 
                 # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
                 if result is not None:
-                    cursor.execute("""
-                        INSERTO INTO base_1 (id, redirect_url)
-                        VALUES (%s, %s)
-                    """, (path, result))
-                    
-                    cursor.commit()
                     print(result)
+
+                    cursor.execute(
+                        """
+                        INSERT INTO base_1 (id, redirect_url)
+                        VALUES (%s, %s)
+                    """,
+                        (path, result),
+                    )
+
+                    conn.commit()
             futures = []
 
         # Encontrar el siguiente índice a incrementar
@@ -113,11 +117,13 @@ def start_process(characters: str, domain_option: int) -> None:
     # Cerrar el executor después de terminar el procesamiento
     executor.shutdown()
 
+
 def get_url_available(domain, path):
     """Comprueba si una URL corta está disponible."""
     try:
         url = domain + path
 
+        print(url)
         response = requests.get(url, timeout=10)
 
         response.encoding = "utf-8"
@@ -127,30 +133,42 @@ def get_url_available(domain, path):
         if response.history and response.url != domain:
             return f"{url} -> {response.url}\n"
 
-    except requests.exceptions.RequestException:
-        pass
+    except requests.exceptions.RequestException as e:
+        print(e)
 
     return None
 
 
 # Función para guardar el estado en un archivo
-def save_state(filename: str, data) -> None:
-    cursor.execute("INSERT INTO base_1 (id) VALUES (%s)", (path))
-    cursor.commit()
-
+def save_state() -> None:
+    conn.rollback()
+    # TODO: Reviso si el elemento existe
+    # cursor.execute("SELECT id FROM base_1 ORDER BY creation_date DESC LIMIT 1")
+    # result = cursor.fetchone()
+    
+    # if result[0] != path:
+    #     cursor.execute("INSERT INTO base_1 (id) VALUES (%s)", (path,))
+    #     conn.commit()
+    try:
+        cursor.execute("INSERT INTO base_1 (id) VALUES (%s)", (path,))
+        conn.commit()
+    except Exception as e:
+        print(e)
+        pass
 
 # Función para cargar el estado desde un archivo
 def load_state() -> list:
-    cursor.execute("SELECT id FROM base_1 ORDER BY id DESC LIMIT 1")
+    cursor.execute("SELECT id FROM base_1 ORDER BY creation_date DESC LIMIT 1")
     result = cursor.fetchone()
     # Retorna una lista de los índices de los caracteres
     return [CHARACTERS.index(i) for i in result[0]]
+
 
 def main() -> None:
     global domain_option
 
     if PRODUCTION:
-        domain_option = 1
+        domain_option = 0
         start_process(CHARACTERS, domain_option)
     else:
         # Seleccionar un dominio
@@ -165,16 +183,19 @@ def main() -> None:
 
         start_process(CHARACTERS, domain_option)
 
+
 if __name__ == "__main__":
     try:
         main()
 
-    except:
-        try:
+    except Exception as e:
+            print("Primera: ", e)
+        # try:
             # Guardar el estado en un archivo
             save_state()
             print("\n\nEstado de ejecución guardado")
             conn.close()
-        except:
-            conn.close()
-            print("\n\nError")
+            print("\n\nDone!")
+        # except Exception as e:
+        #     conn.close()
+        #     print(f"\n\nError: {e}")
