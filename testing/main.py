@@ -75,28 +75,6 @@ def start_process(characters: str, domain_option: int) -> None:
 
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
         futures.append(executor.submit(get_url_available, domain, path))
-        # Cada 20 iteraciones, se verifica los resultados
-        if iter % 20 == 0:
-            # Iterar sobre cada futuro completado en la lista de futuros
-            for future in concurrent.futures.as_completed(futures):
-                # Obtener el resultado del futuro completado
-                result = future.result()
-
-                # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
-                if result is not None:
-                    print(result)
-
-                    cursor.execute(
-                        """
-                        INSERT INTO base_1 (id, redirect_url)
-                        VALUES (%s, %s)
-                    """,
-                        (path, result),
-                    )
-
-                    conn.commit()
-            futures = []
-
         # Encontrar el siguiente índice a incrementar
         i = domain_length - 1
 
@@ -117,13 +95,36 @@ def start_process(characters: str, domain_option: int) -> None:
     # Cerrar el executor después de terminar el procesamiento
     executor.shutdown()
 
+        # Cada 20 iteraciones, se verifica los resultados
+"""         if iter % 20 == 0:
+            # Iterar sobre cada futuro completado en la lista de futuros
+            for future in concurrent.futures.as_completed(futures):
+                # Obtener el resultado del futuro completado
+                result = future.result()
+                # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
+                if result is not None:
+                    # TODO: Necesito verificar si la URL corta del resultado existe en la BD, path solo verifica la última opción
+                    if not id_exist(path):
+                        print(result)
+
+                        cursor.execute(
+                            
+                            # INSERT INTO base_1 (id, redirect_url)
+                            # VALUES (%s, %s)
+                        ,
+                            (path, result),
+                        )
+
+                        conn.commit()
+            futures = [] """
+
+
 
 def get_url_available(domain, path):
     """Comprueba si una URL corta está disponible."""
     try:
         url = domain + path
 
-        print(url)
         response = requests.get(url, timeout=10)
 
         response.encoding = "utf-8"
@@ -131,7 +132,17 @@ def get_url_available(domain, path):
         # response.raise_for_status()  # raise exception if status code >= 400
 
         if response.history and response.url != domain:
-            return f"{url} -> {response.url}\n"
+            result = response.url
+            if not id_exist(path):
+                print(f"{url} -> {result}\n")
+                cursor.execute(
+                    """
+                    INSERT INTO base_1 (id, redirect_url)
+                    VALUES (%s, %s)
+                """,
+                    (path, result),
+                )
+                conn.commit()
 
     except requests.exceptions.RequestException as e:
         print(e)
@@ -139,22 +150,20 @@ def get_url_available(domain, path):
     return None
 
 
+def id_exist(id: str) -> bool:
+    cursor.execute("SELECT EXISTS(SELECT id FROM base_1 WHERE id=%s);", (id,))
+
+    return cursor.fetchone()[0]
+
+
 # Función para guardar el estado en un archivo
 def save_state() -> None:
     conn.rollback()
-    # TODO: Reviso si el elemento existe
-    # cursor.execute("SELECT id FROM base_1 ORDER BY creation_date DESC LIMIT 1")
-    # result = cursor.fetchone()
-    
-    # if result[0] != path:
-    #     cursor.execute("INSERT INTO base_1 (id) VALUES (%s)", (path,))
-    #     conn.commit()
-    try:
+
+    if not id_exist(path):
         cursor.execute("INSERT INTO base_1 (id) VALUES (%s)", (path,))
         conn.commit()
-    except Exception as e:
-        print(e)
-        pass
+
 
 # Función para cargar el estado desde un archivo
 def load_state() -> list:
@@ -189,13 +198,8 @@ if __name__ == "__main__":
         main()
 
     except Exception as e:
-            print("Primera: ", e)
-        # try:
-            # Guardar el estado en un archivo
-            save_state()
-            print("\n\nEstado de ejecución guardado")
-            conn.close()
-            print("\n\nDone!")
-        # except Exception as e:
-        #     conn.close()
-        #     print(f"\n\nError: {e}")
+        print("Error: ", e)
+        # Guardar el estado en un archivo
+        save_state()
+        print("\n\nEstado de ejecución guardado")
+        conn.close()
