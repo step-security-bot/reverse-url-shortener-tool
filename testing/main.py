@@ -4,7 +4,7 @@
 #
 
 from decouple import config as getenv
-import string, os, pickle
+import string, os
 from time import sleep
 import concurrent.futures, requests
 import psycopg2
@@ -61,7 +61,7 @@ def start_process(characters: str, domain_option: int) -> None:
         indices = [0] * domain_length
 
     # Executor
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
     # Generar las permutaciones iterativamente
     futures = []
@@ -95,59 +95,30 @@ def start_process(characters: str, domain_option: int) -> None:
     # Cerrar el executor después de terminar el procesamiento
     executor.shutdown()
 
-        # Cada 20 iteraciones, se verifica los resultados
-"""         if iter % 20 == 0:
-            # Iterar sobre cada futuro completado en la lista de futuros
-            for future in concurrent.futures.as_completed(futures):
-                # Obtener el resultado del futuro completado
-                result = future.result()
-                # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
-                if result is not None:
-                    # TODO: Necesito verificar si la URL corta del resultado existe en la BD, path solo verifica la última opción
-                    if not id_exist(path):
-                        print(result)
-
-                        cursor.execute(
-                            
-                            # INSERT INTO base_1 (id, redirect_url)
-                            # VALUES (%s, %s)
-                        ,
-                            (path, result),
-                        )
-
-                        conn.commit()
-            futures = [] """
-
-
 
 def get_url_available(domain, path):
     """Comprueba si una URL corta está disponible."""
     try:
         url = domain + path
-
-        response = requests.get(url, timeout=10)
-
+        response = requests.get(url, timeout=5)
         response.encoding = "utf-8"
+        status_code = response.status_code
 
-        # response.raise_for_status()  # raise exception if status code >= 400
-
-        if response.history and response.url != domain:
+        if response.history and response.url != domain and not 400 <= status_code < 500:
             result = response.url
-            if not id_exist(path):
-                print(f"{url} -> {result}\n")
+            if path != id_state:
+                print(f"({response.status_code}) {url} -> {result}\n")
                 cursor.execute(
                     """
                     INSERT INTO base_1 (id, redirect_url)
                     VALUES (%s, %s)
                 """,
-                    (path, result),
+                    (path, result[8:]),
                 )
                 conn.commit()
 
     except requests.exceptions.RequestException as e:
-        print(e)
-
-    return None
+        print("Error (get_url_available): ", e)
 
 
 def id_exist(id: str) -> bool:
@@ -167,10 +138,12 @@ def save_state() -> None:
 
 # Función para cargar el estado desde un archivo
 def load_state() -> list:
+    global id_state
     cursor.execute("SELECT id FROM base_1 ORDER BY creation_date DESC LIMIT 1")
     result = cursor.fetchone()
+    id_state = result[0]
     # Retorna una lista de los índices de los caracteres
-    return [CHARACTERS.index(i) for i in result[0]]
+    return [CHARACTERS.index(i) for i in id_state]
 
 
 def main() -> None:
@@ -192,14 +165,14 @@ def main() -> None:
 
         start_process(CHARACTERS, domain_option)
 
-
 if __name__ == "__main__":
     try:
         main()
 
     except Exception as e:
+        print("#" * 100)
         print("Error: ", e)
-        # Guardar el estado en un archivo
+        # Guardar el estado
         save_state()
         print("\n\nEstado de ejecución guardado")
         conn.close()

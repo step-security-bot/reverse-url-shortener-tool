@@ -32,9 +32,9 @@ def get_url_available(domain, path):
         url = domain + path
         response = requests.get(url, timeout=10)
         response.encoding = "utf-8"
-        # response.raise_for_status()  # raise exception if status code >= 400
-        if response.history and response.url != domain:
-            return f"{response.status_code}. {url} -> {response.url}\n"
+        status_code = response.status_code
+        if response.history and response.url != domain and not 400 <= status_code < 500:
+            return f"{status_code}. {url} -> {response.url}\n"
     except requests.exceptions.RequestException:
         pass
     return None

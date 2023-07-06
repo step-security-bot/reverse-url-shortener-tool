@@ -3,41 +3,65 @@
 # Co-Authors: ChatGTP 3.5, Debugcode.ai
 #
 
-import string, os, pickle
+from decouple import config as getenv
+import string, os
 from time import sleep
 import concurrent.futures, requests
+import psycopg2
 
+# Constants
+PRODUCTION = getenv("PRODUCTION")
 CHARACTERS = string.ascii_letters + string.digits
-PRODUCTION = os.getenv("PRODUCTION")
-
 SHORTURL_DOMAINS = {
     "https://t.ly/": 4,
-    "https://shorturl.lol/": 4,
     "https://rb.gy/": 5,
     "https://www.shorturl.at/": 5,
     "https://tinyurl.com/": 6,
 }
 
+# Database
+conn = psycopg2.connect(
+    user=getenv("user"),
+    password=getenv("password"),
+    host=getenv("host"),
+    port=getenv("port"),
+    database=getenv("database"),
+)
+cursor = conn.cursor()
+
+cursor.execute(
+    """ CREATE TABLE if NOT EXISTS base_1 (
+            id VARCHAR(10) PRIMARY KEY NOT NULL,
+            redirect_url TEXT,
+            creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """
+)
+
+conn.commit()
+
 
 def start_process(characters: str, domain_option: int) -> None:
     global indices
+    global path
     num_characters = len(characters)
 
     # Cargar la longitud del dominio y el dominio a usar
     domain_length = list(SHORTURL_DOMAINS.values())[domain_option]
     domain = list(SHORTURL_DOMAINS.keys())[domain_option]
 
-    # Recuperar la lista de índices
-    if os.path.exists(f"./state_{domain_option}.pkl"):
-        indices = load_state(f"./state_{domain_option}.pkl")
-        print("Retomando ejecución\n")
-
+    # Recuperar la lista de índices de la base de datos
+    cursor.execute("SELECT COUNT(*) FROM base_1")
+    result = cursor.fetchone()
+    if result[0] > 0:
+        indices = load_state()
+        print(f"Retomando ejecución desde {indices}\n")
     else:
         # Lista de índices base
         indices = [0] * domain_length
 
     # Executor
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=20)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
     # Generar las permutaciones iterativamente
     futures = []
@@ -51,19 +75,6 @@ def start_process(characters: str, domain_option: int) -> None:
 
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
         futures.append(executor.submit(get_url_available, domain, path))
-
-        # Cada 20 iteraciones, se verifica los resultados
-        if iter % 20 == 0:
-            # Iterar sobre cada futuro completado en la lista de futuros
-            for future in concurrent.futures.as_completed(futures):
-                # Obtener el resultado del futuro completado
-                result = future.result()
-
-                # Si el resultado no es None (es decir, se encontró una URL corta), imprimirlo en la consola
-                if result is not None:
-                    print(result)
-            futures = []
-
         # Encontrar el siguiente índice a incrementar
         i = domain_length - 1
 
@@ -89,51 +100,57 @@ def get_url_available(domain, path):
     """Comprueba si una URL corta está disponible."""
     try:
         url = domain + path
-
-        response = requests.get(url, timeout=10)
-
+        response = requests.get(url, timeout=5)
         response.encoding = "utf-8"
+        status_code = response.status_code
 
-        # response.raise_for_status()  # raise exception if status code >= 400
+        if response.history and response.url != domain and not 400 <= status_code < 500:
+            result = response.url
+            if path != id_state:
+                print(f"({response.status_code}) {url} -> {result}\n")
+                cursor.execute(
+                    """
+                    INSERT INTO base_1 (id, redirect_url)
+                    VALUES (%s, %s)
+                """,
+                    (path, result[8:]),
+                )
+                conn.commit()
 
-        if response.history and response.url != domain:
-            return f"{url} -> {response.url}\n"
+    except requests.exceptions.RequestException as e:
+        print("Error (get_url_available): ", e)
 
-    except requests.exceptions.RequestException:
-        pass
 
-    return None
+def id_exist(id: str) -> bool:
+    cursor.execute("SELECT EXISTS(SELECT id FROM base_1 WHERE id=%s);", (id,))
+
+    return cursor.fetchone()[0]
 
 
 # Función para guardar el estado en un archivo
-def save_state(filename: str, data) -> None:
-    try:
-        with open(filename, "wb") as file:
-            pickle.dump(data, file)
+def save_state() -> None:
+    conn.rollback()
 
-    except IOError:
-        print(f"Error: No se pudo guardar el estado en el archivo {filename}")
+    if not id_exist(path):
+        cursor.execute("INSERT INTO base_1 (id) VALUES (%s)", (path,))
+        conn.commit()
 
 
 # Función para cargar el estado desde un archivo
-def load_state(filename: str):
-    try:
-        with open(filename, "rb") as file:
-            data = pickle.load(file)
-            return data
-
-    except FileNotFoundError:
-        print(f"Error: Archivo {filename} no encontrado")
-
-    except IOError:
-        print(f"Error: No se pudo leer del archivo {filename}")
+def load_state() -> list:
+    global id_state
+    cursor.execute("SELECT id FROM base_1 ORDER BY creation_date DESC LIMIT 1")
+    result = cursor.fetchone()
+    id_state = result[0]
+    # Retorna una lista de los índices de los caracteres
+    return [CHARACTERS.index(i) for i in id_state]
 
 
 def main() -> None:
     global domain_option
 
     if PRODUCTION:
-        domain_option = 1
+        domain_option = 0
         start_process(CHARACTERS, domain_option)
     else:
         # Seleccionar un dominio
@@ -148,15 +165,14 @@ def main() -> None:
 
         start_process(CHARACTERS, domain_option)
 
-
 if __name__ == "__main__":
     try:
         main()
 
-    except:
-        try:
-            # Guardar el estado en un archivo
-            save_state(f"state_{domain_option}.pkl", indices)
-            print("\n\nEstado de ejecución guardado")
-        except:
-            print("\n\nError")
+    except Exception as e:
+        print("#" * 100)
+        print("Error: ", e)
+        # Guardar el estado
+        save_state()
+        print("\n\nEstado de ejecución guardado")
+        conn.close()
