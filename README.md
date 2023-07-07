@@ -17,15 +17,13 @@ cd Reverse_URL_Shortener
 
 ## Usage
 
-1. Open the `main.py` file in a text editor.
+1. Open the `old_main.py` file in a text editor.
 
 2. Configure the `SHORTURL_DOMAINS` dictionary with the desired short URL domains and their corresponding path lengths. Uncomment the domains you want to use for searching short URLs.
 
-3. Customize the `MAX_ITERATIONS` constant to set the number of iterations for generating random paths and checking URL availability.
-
 4. Run the script:
 ```shell
-python ./main.py
+python ./old_main.py
 ```
 
 5. The script will search for available short URLs and print any found URLs to the console.

@@ -166,13 +166,5 @@ def main() -> None:
         start_process(CHARACTERS, domain_option)
 
 if __name__ == "__main__":
-    try:
-        main()
+    main()
 
-    except Exception as e:
-        print("#" * 100)
-        print("Error: ", e)
-        # Guardar el estado
-        save_state()
-        print("\n\nEstado de ejecución guardado")
-        conn.close()
