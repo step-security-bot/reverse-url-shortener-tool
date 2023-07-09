@@ -108,7 +108,7 @@ def get_url_available(domain, path):
     """Comprueba si una URL corta está disponible."""
     try:
         url = domain + path
-        response = requests.get(url, timeout=6)
+        response = requests.get(url, timeout=10)
         response.encoding = "utf-8"
         status_code = response.status_code
 

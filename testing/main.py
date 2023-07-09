@@ -33,6 +33,7 @@ cursor.execute(
     """ CREATE TABLE if NOT EXISTS base_1 (
             id VARCHAR(10) PRIMARY KEY NOT NULL,
             redirect_url TEXT,
+            status_code INTEGER,
             creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """
@@ -44,37 +45,43 @@ conn.commit()
 def start_process(characters: str, domain_option: int) -> None:
     global indices
     global path
+    global response_list
+    global domain_length
+
     num_characters = len(characters)
+    response_list = list()
 
     # Cargar la longitud del dominio y el dominio a usar
     domain_length = list(SHORTURL_DOMAINS.values())[domain_option]
     domain = list(SHORTURL_DOMAINS.keys())[domain_option]
 
     # Recuperar la lista de índices de la base de datos
-    cursor.execute("SELECT COUNT(*) FROM base_1")
-    result = cursor.fetchone()
-    if result[0] > 0:
-        indices = load_state()
-        print(f"Retomando ejecución desde {indices}\n")
-    else:
-        # Lista de índices base
-        indices = [0] * domain_length
+
+    indices = load_state()
+    print(f"Retomando ejecución desde {indices}\n")
+
 
     # Executor
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    # executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 
     # Generar las permutaciones iterativamente
-    futures = []
+    # futures = []
     iter = int()
     while True:
         iter += 1
         # Permutación actual usando el arreglo de índices y la lista de caracteres
         path = "".join([characters[i] for i in indices])
 
-        # Crear una lista vacía para almacenar los futuros (tareas) que enviaremos al executor
-
         # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
-        futures.append(executor.submit(get_url_available, domain, path))
+        # try:
+        #     futures.append(executor.submit(get_url_available, domain, path))
+        # except:
+        #     executor.shutdown(cancel_futures=True)
+        #     save_state(response_list)
+        #     break
+
+        get_url_available(domain, path)
+
         # Encontrar el siguiente índice a incrementar
         i = domain_length - 1
 
@@ -93,32 +100,25 @@ def start_process(characters: str, domain_option: int) -> None:
             indices[j] = 0
 
     # Cerrar el executor después de terminar el procesamiento
-    executor.shutdown()
+    # executor.shutdown()
 
 
 def get_url_available(domain, path):
     """Comprueba si una URL corta está disponible."""
     try:
         url = domain + path
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=10)
         response.encoding = "utf-8"
         status_code = response.status_code
 
-        if response.history and response.url != domain and not 400 <= status_code < 500:
-            result = response.url
-            if path != id_state:
-                print(f"({response.status_code}) {url} -> {result}\n")
-                cursor.execute(
-                    """
-                    INSERT INTO base_1 (id, redirect_url)
-                    VALUES (%s, %s)
-                """,
-                    (path, result[8:]),
-                )
-                conn.commit()
+        if response.history and response.url != domain and path != id_state:
+            result = response.url[8:]
+            print(f"({response.status_code}) {url} -> https://{result}\n")
+            # Se guarda los resultados en una lista
+            response_list.append((path, status_code, result))
 
     except requests.exceptions.RequestException as e:
-        print("Error (get_url_available): ", e)
+        print(f"\nError ({url}): ", e)
 
 
 def id_exist(id: str) -> bool:
@@ -128,23 +128,45 @@ def id_exist(id: str) -> bool:
 
 
 # Función para guardar el estado en un archivo
-def save_state() -> None:
-    conn.rollback()
+def save_state(response_list) -> None:
+    if response_list:
+        print("\nSaving state...", end="")
+        conn.rollback()
 
-    if not id_exist(path):
-        cursor.execute("INSERT INTO base_1 (id) VALUES (%s)", (path,))
+        cursor.executemany(
+            """
+            INSERT INTO base_1 (id, status_code, redirect_url)
+            VALUES (%s, %s, %s)
+            """,
+            # Ignorando el start_index
+            response_list,
+        )
+        
         conn.commit()
+        print("Done!")
+    else:
+        print("\nExiting...", end="")
+
 
 
 # Función para cargar el estado desde un archivo
 def load_state() -> list:
     global id_state
-    cursor.execute("SELECT id FROM base_1 ORDER BY creation_date DESC LIMIT 1")
-    result = cursor.fetchone()
-    id_state = result[0]
-    # Retorna una lista de los índices de los caracteres
-    return [CHARACTERS.index(i) for i in id_state]
 
+    cursor.execute("SELECT COUNT(*) FROM base_1")
+    result = cursor.fetchone()
+
+    if result[0] > 0:
+        cursor.execute("SELECT id FROM base_1 ORDER BY creation_date DESC LIMIT 1")
+        result = cursor.fetchone()
+        id_state = result[0]
+        # Retorna una lista de los índices de los caracteres
+        return [CHARACTERS.index(i) for i in id_state]
+    else:
+        index = [0] * domain_length
+        id_state = ''.join(CHARACTERS[i] for i in index)
+
+        return index
 
 def main() -> None:
     global domain_option
@@ -160,11 +182,10 @@ def main() -> None:
             print(f"{counter}. {key}")
             counter += 1
 
-        domain_option = int(input("\nIngrese una opción (1 - 5): ")) - 1
+        domain_option = int(input("\nIngrese una opción (1 - 4): ")) - 1
         print()
 
         start_process(CHARACTERS, domain_option)
 
 if __name__ == "__main__":
     main()
-
