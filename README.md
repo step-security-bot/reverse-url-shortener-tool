@@ -23,7 +23,7 @@ cd Reverse_URL_Shortener
 
 4. Run the script:
 ```shell
-python ./old_main.py
+python ./testing/old_main.py
 ```
 
 5. The script will search for available short URLs and print any found URLs to the console.
