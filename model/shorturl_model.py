@@ -1,6 +1,6 @@
 import concurrent.futures
-from database import Database
-from utils import get_url_available
+from db.database import Database
+from utils.utils import get_url_available
 
 class ShortURLModel:
     def __init__(self, domain, domain_length, characters):
