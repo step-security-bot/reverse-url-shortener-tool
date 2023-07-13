@@ -1,6 +1,9 @@
 import requests
 
-def get_url_available(domain, path, code, model):
+def get_url_available(domain, path, model):
+    code = [str(model.characters.index(character)) for character in path]
+    code = int("".join(code))
+
     try:
         url = domain + path
         response = requests.get(url, timeout=10)

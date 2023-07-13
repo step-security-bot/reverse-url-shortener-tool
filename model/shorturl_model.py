@@ -1,6 +1,6 @@
 import concurrent.futures
 from db.database import Database
-from utils.utils import get_url_available
+from utils.shorturl_utils import get_url_available
 
 class ShortURLModel:
     def __init__(self, domain, domain_length, characters):
@@ -36,10 +36,10 @@ class ShortURLModel:
             if iter > 1: # TODO: Ignorar el primer elemento
                 # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
                 try:
-                    futures.append(executor.submit(get_url_available, self.domain, path, iter, self))
+                    futures.append(executor.submit(get_url_available, self.domain, path, self))
                 except:
-                    executor.shutdown(cancel_futures=True)
                     self.save_state()
+                    executor.shutdown(cancel_futures=True)
                     break
 
             # Encontrar el siguiente índice a incrementar
@@ -64,7 +64,8 @@ class ShortURLModel:
 
     def save_state(self) -> None:
         if self.response_list:
-            self.database.insert_data(self.response_list)
+            data = self.response_list
+            self.database.insert_data(data)
         else:
             print("\nExiting...", end="")
 

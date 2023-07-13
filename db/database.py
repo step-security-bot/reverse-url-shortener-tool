@@ -38,4 +38,4 @@ class Database:
         )
 
         self.conn.commit()
-        print("Done!")
+        print("Done!\n")
