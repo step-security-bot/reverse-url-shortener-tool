@@ -26,7 +26,7 @@ class Database:
 
     def insert_data(self, data):
 
-        print("\nSaving state...", end="")
+        print("\nSaving state...", end=" ")
         self.conn.rollback()
 
         self.cursor.executemany(
