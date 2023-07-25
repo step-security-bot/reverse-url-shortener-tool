@@ -99,8 +99,8 @@ class ShortURLModel:
         if iter % 200 == 0:
             print(f"Última id de tarea: {iter} ... liberando recursos")
             sleep(10)
-        if len(self.response_list) > 40:
+        if len(self.response_list) > 20:
             data = self.response_list
             self.response_list.clear()
-            print("Tareas completadas: {len(data)}.")
+            print(f"Tareas completadas: {len(data)}.")
             self.database.insert_data(data)
