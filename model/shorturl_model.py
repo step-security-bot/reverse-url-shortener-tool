@@ -1,72 +1,70 @@
 import concurrent.futures
+from time import sleep
+
 from db.database import Database
-from utils.utils import get_url_available
+from utils.shorturl_utils import get_url_available
+from utils.constants import CHARACTERS
 
 class ShortURLModel:
-    def __init__(self, domain, domain_length, characters):
+    def __init__(self, domain, domain_length):
         self.database = Database()
-        self.response_list = None
+        self.response_list = []
         self.id_state = None
         self.domain = domain
         self.domain_length = domain_length
-        self.characters = characters
+        self.path = None
+        self.characters = CHARACTERS
+        # Executor
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 
     def start_process(self) -> None:
-        self.response_list = []
-        
-        num_characters = len(self.characters)
-
-        # Recuperar la lista de índices de la base de datos
-
+        # Recuperar el último índices de la base de datos
         indices = self.load_state()
         print(f"Retomando ejecución desde {indices}\n")
 
-
-        # Executor
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
-
         # Generar las permutaciones iterativamente
-        futures = []
         iter = 0
         while True:
             iter += 1
-            # Permutación actual usando el arreglo de índices y la lista de caracteres
-            path = "".join([self.characters[i] for i in indices])
 
-            if iter > 1: # TODO: Ignorar el primer elemento
-                # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
-                try:
-                    futures.append(executor.submit(get_url_available, self.domain, path, iter, self))
-                except:
-                    executor.shutdown(cancel_futures=True)
-                    self.save_state()
-                    break
+            try:
+                self.check_iter(iter)
+            except Exception as e:
+                print(f"Model: {e}")
+
+            # Permutación actual usando el arreglo de índices y la lista de caracteres
+            self.path = "".join([self.characters[i] for i in indices])
+
+            try:
+                self.send_task(iter)
+            except Exception as e:
+                print(f"Model: {e}")
 
             # Encontrar el siguiente índice a incrementar
-            i = self.domain_length - 1
+            index = self.domain_length - 1
 
             # Mientras los números a la derecha sean los máximos, moverse a la izquierda
-            while i >= 0 and indices[i] == num_characters - 1:
-                i -= 1
+            while index >= 0 and indices[index] == len(self.characters) - 1:
+                index -= 1
 
             # Si todos los índices han alcanzado el máximo, terminar el bucle
-            if i < 0:
+            if index < 0:
                 break
 
             # Incrementar el índice encontrado y ajustar los siguientes índices de la derecha a 0
-            indices[i] += 1
+            indices[index] += 1
 
-            for j in range(i + 1, self.domain_length):
+            for j in range(index + 1, self.domain_length):
                 indices[j] = 0
 
-        # Cerrar el executor después de terminar el procesamiento
-        executor.shutdown()
+        self.executor.shutdown()
 
-    def save_state(self) -> None:
-        if self.response_list:
-            self.database.insert_data(self.response_list)
-        else:
-            print("\nExiting...", end="")
+    def save_state(data) -> None:
+        data = self.response_list
+        self.response_list.clear()
+        self.database.insert_data(data)
+        self.executor.shutdown(cancel_futures=True)
+        exit()
 
     def load_state(self) -> list:
         self.database.cursor.execute("SELECT COUNT(*) FROM base_1")
@@ -75,15 +73,34 @@ class ShortURLModel:
         if result[0] > 0:
             self.database.cursor.execute("SELECT id FROM base_1 ORDER BY code DESC LIMIT 1")
             result = self.database.cursor.fetchone()
-            id_state = result[0]
+            self.id_state = result[0]
             # Retorna una lista de los índices de los caracteres
-            return [self.characters.index(i) for i in id_state]
+            return [self.characters.index(i) for i in self.id_state]
         else:
             index = [0] * self.domain_length
-            id_state = ''.join(self.characters[i] for i in index)
+            self.id_state = ''.join(self.characters[i] for i in index)
 
             return index
 
     def id_exist(self, id: str) -> bool:
         self.database.cursor.execute("SELECT EXISTS(SELECT id FROM base_1 WHERE id=%s);", (id,))
         return self.database.cursor.fetchone()[0]
+
+    def send_task(self, iter):
+        if iter > 1: # TODO: Ignorar el primer elemento
+            # Enviar una tarea al executor para verificar si la URL corta formada por el dominio y la ruta está disponible
+            try:
+                self.executor.submit(get_url_available, self.domain, self.path, self)
+            except Exception as e:
+                print(e)
+                self.save_state()
+
+    def check_iter(self, iter):
+        if iter % 200 == 0:
+            print(f"Última id de tarea: {iter} ... liberando recursos")
+            sleep(10)
+        if len(self.response_list) > 40:
+            data = self.response_list
+            self.response_list.clear()
+            print("Tareas completadas: {len(data)}.")
+            self.database.insert_data(data)
