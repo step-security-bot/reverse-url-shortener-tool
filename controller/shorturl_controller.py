@@ -16,3 +16,4 @@ class ShortURLController:
         except Exception as e:
             print(f"Controller: {e}")
             self.model.save_state()
+            
