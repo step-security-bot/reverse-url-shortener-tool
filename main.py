@@ -1,17 +1,10 @@
 from argparse import ArgumentParser
-from string import ascii_letters, digits
 
 from controller.shorturl_controller import ShortURLController
 from view.shorturl_view import ShortURLView
+from utils.constants import SHORTURL_DOMAINS
 
 def main():
-    CHARACTERS = ascii_letters + digits
-    SHORTURL_DOMAINS = {
-        1: ["https://t.ly/", 4],
-        2: ["https://rb.gy/", 5],
-        3: ["https://www.shorturl.at/", 5],
-        4: ["https://tinyurl.com/", 6],
-    }
 
     # Configurar el análisis de argumentos
     parser = ArgumentParser()
@@ -31,7 +24,7 @@ def main():
     domain = SHORTURL_DOMAINS[domain_option][0]
     domain_length = SHORTURL_DOMAINS[domain_option][1]
 
-    controller = ShortURLController(domain, domain_length, CHARACTERS) # Domain option, para globalizar
+    controller = ShortURLController(domain, domain_length)
     view = ShortURLView(controller)
     
     view.start(domain_option)

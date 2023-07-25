@@ -1,17 +1,19 @@
 import concurrent.futures
 from time import sleep
+
 from db.database import Database
 from utils.shorturl_utils import get_url_available
+from utils.constants import CHARACTERS
 
 class ShortURLModel:
-    def __init__(self, domain, domain_length, characters):
+    def __init__(self, domain, domain_length):
         self.database = Database()
         self.response_list = []
         self.id_state = None
         self.domain = domain
         self.domain_length = domain_length
         self.path = None
-        self.characters = characters
+        self.characters = CHARACTERS
         # Executor
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 
@@ -57,8 +59,12 @@ class ShortURLModel:
 
         self.executor.shutdown()
 
-    def save_state(self, data) -> None:
+    def save_state(data) -> None:
+        data = self.response_list
+        self.response_list.clear()
         self.database.insert_data(data)
+        self.executor.shutdown(cancel_futures=True)
+        exit()
 
     def load_state(self) -> list:
         self.database.cursor.execute("SELECT COUNT(*) FROM base_1")
@@ -87,11 +93,7 @@ class ShortURLModel:
                 self.executor.submit(get_url_available, self.domain, self.path, self)
             except Exception as e:
                 print(e)
-                data = self.response_list
-                self.response_list.clear()
-                self.save_state(data)
-                self.executor.shutdown(cancel_futures=True)
-                exit()
+                self.save_state()
 
     def check_iter(self, iter):
         if iter % 200 == 0:
@@ -101,4 +103,4 @@ class ShortURLModel:
             data = self.response_list
             self.response_list.clear()
             print("Tareas completadas: {len(data)}.")
-            self.save_state(data)
+            self.database.insert_data(data)

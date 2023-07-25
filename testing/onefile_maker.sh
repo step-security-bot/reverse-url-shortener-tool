@@ -1,12 +1,21 @@
 #!/bin/bash
 
-readarray -d '' files < <(find ../. -name "*.py" -not -name "__*" -not -path "*testing*" -print0)
+# Cambiar directorio de ejecución a ../
+cd ../
 
-rm ./one_file.py
+# Define el archivo de salida
+output_file="./testing/one_file.py"
 
-for file in "${files[@]}"; do
-  echo "# $file" >> ./one_file.py
-  cat $file >> ./one_file.py
-  echo "\n" >> ./one_file.py
-done 
+# Elimina el archivo de salida si ya existe
+rm -f "$output_file"
 
+# Busca los archivos Python y concaténalos en el archivo de salida
+find . -name "*.py" -not -name "__*" -not -path "*testing*" -print0 |
+while IFS= read -r -d '' file; do
+    echo "# $file"
+  {
+    echo "# $file"
+    cat "$file"
+    echo  # Agrega una línea en blanco después de cada archivo
+  } >> "$output_file"
+done
