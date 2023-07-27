@@ -8,11 +8,11 @@ This Python script is designed to find available short URLs using multiple domai
 
 1. Clone the repository:
 ```shell
-git clone https://github.com/meyer-pidiache/Reverse_URL_Shortener
+git clone https://github.com/meyer-pidiache/reverse-url-shortener-tool.git
 ```
 2. Navigate to the project directory:
 ```shell
-cd Reverse_URL_Shortener
+cd reverse-url-shortener-tool
 ```
 
 ## Usage
@@ -23,7 +23,7 @@ cd Reverse_URL_Shortener
 
 4. Run the script:
 ```shell
-python ./testing/old_main.py
+python ./service/testing/old_main.py
 ```
 
 5. The script will search for available short URLs and print any found URLs to the console.

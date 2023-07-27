@@ -1,23 +1,30 @@
 {
-  "name": "reverse_url_shortener",
-  "version": "1.0.0",
-  "description": "URL Tool",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "commit": "commit",
-    "prepare": "husky install"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git@meyer.com:meyer-pidiache/reverse-url-shortener-tool"
-  },
-  "author": "Meyer Pidiache <meyer.pidiache@gmail.com>",
-  "license": "ISC",
-  "devDependencies": {
-    "@commitlint/cli": "^17.6.6",
-    "@commitlint/config-conventional": "^17.6.6",
-    "@commitlint/prompt-cli": "^17.6.6",
-    "husky": "^8.0.3"
-  }
+    "author": "Meyer Pidiache <meyer.pidiache@gmail.com>",
+    "name": "reverse_url_shortener",
+    "version": "1.0.0",
+    "license": "ISC",
+    "description": "URL Tool",
+    "private": true,
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "commit": "commit",
+        "prepare": "husky install",
+        "dev": "vite",
+        "build": "vite build"
+    },
+    "devDependencies": {
+        "@commitlint/cli": "^17.6.6",
+        "@commitlint/config-conventional": "^17.6.6",
+        "@commitlint/prompt-cli": "^17.6.6",
+        "axios": "^1.1.2",
+        "husky": "^8.0.3",
+        "laravel-vite-plugin": "^0.7.5",
+        "vite": "^4.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@meyer.com:meyer-pidiache/reverse-url-shortener-tool"
+    }
 }
