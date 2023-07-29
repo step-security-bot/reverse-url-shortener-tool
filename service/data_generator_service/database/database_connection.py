@@ -18,11 +18,11 @@ class Database:
         self.cursor = self.conn.cursor()
 
         self.cursor.execute(
-            """CREATE TABLE IF NOT EXISTS base_1 (
-                id VARCHAR(10) PRIMARY KEY NOT NULL,
-                redirect_url TEXT,
+            """CREATE TABLE IF NOT EXISTS url_data (
+                id INTEGER PRIMARY KEY NOT NULL,
+                path VARCHAR(10),
                 status_code INTEGER,
-                code INTEGER,
+                redirect_url TEXT,
                 creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )"""
         )
@@ -36,7 +36,7 @@ class Database:
 
         self.cursor.executemany(
             """
-            INSERT INTO base_1 (id, status_code, redirect_url, code)
+            INSERT INTO url_data (id, status_code, redirect_url, code)
             VALUES (%s, %s, %s, %s)
             """,
             data,

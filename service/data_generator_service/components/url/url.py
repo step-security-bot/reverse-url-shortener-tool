@@ -8,16 +8,13 @@ class URL:
         self.domain = domain
         self.path_length = path_length
         self.path_characters:str = CHARACTERS
-        self.number_of_path_permutations:int = len(self.path_characters) ** self.path_length
         self.current_path:str = None
         self.current_id:int = 0
 
-    def set_current_path_by_permutation_notation(self, permutation_notation: list[int]) -> str:
-        # permutation_notation = [int, int, ..., int]
-        self.current_path = "".join([self.path_characters[position] for position in permutation_notation])
-        self.current_id += 1
+        self.permutation_notation = self.get_current_permutation_notation()
+        self.number_of_path_permutations:int = len(self.path_characters) ** self.path_length
 
-    def get_redirect_url(self, path):
+    def get_redirect_url(self, id: int, path: str, url_manager):
 
         url = f"https://{self.domain}/{path}"
 
@@ -34,5 +31,11 @@ class URL:
             response.history
             and response.url != self.domain
         ):
-            result = response.url[8:]
-            print(f"({status_code}) {url} -> https://{result}\n")
+            redirect_url = response.url[8:]
+            print(f"{id}. ({status_code}) {url} -> https://{redirect_url}\n")
+            url_manager.urls_redirect.append((id, path, status_code, redirect_url))
+
+
+    def get_current_permutation_notation(self):
+
+        return [0] * self.path_length

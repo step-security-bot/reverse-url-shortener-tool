@@ -59,7 +59,7 @@ class ShortURLModel:
 
         self.executor.shutdown()
 
-    def save_state(data) -> None:
+    def save_state(self) -> None:
         data = self.response_list
         self.response_list.clear()
         self.database.insert_data(data)
