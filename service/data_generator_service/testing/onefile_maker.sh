@@ -1,7 +1,6 @@
 #!/bin/bash
-
 # Cambiar directorio de ejecución a ../
-cd ../
+cd ./service/data_generator_service/
 
 # Define el archivo de salida
 output_file="./testing/one_file.py"
@@ -13,6 +12,7 @@ rm -f "$output_file"
 find . -name "*.py" -not -name "__*" -not -path "*testing*" -print0 |
 while IFS= read -r -d '' file; do
     echo "# $file"
+    cat "$file"
   {
     echo "# $file"
     cat "$file"

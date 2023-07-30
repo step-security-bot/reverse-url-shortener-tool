@@ -1,19 +1,30 @@
-from decouple import config as getenv
-
+from components.url.url import URL
+from components.url.url_manager import URLManager
+from database.database_connection import Database
 from utils.constants import SHORTURL_DOMAINS
-from data_generator import DataGenerator
+
 
 def main():
-    
+    global url_manager
+    database = Database()
+
     domain_option = 1
     domain = SHORTURL_DOMAINS[domain_option][0]
     path_length = SHORTURL_DOMAINS[domain_option][1]
 
-    data_generator = DataGenerator()
-    data_generator.start()
+    url = URL(domain, path_length)
+    url_manager = URLManager(url, database)
 
-    print(getenv("APP_DEBUG"))
+    url_manager.start()
+
 
 if __name__ == "__main__":
-    main()
-    
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("#" * 94, "executor.shutdown(cancel_futures=True)\n")
+        url_manager.executor.shutdown(cancel_futures=True)
+        print("*" * 94, "database.conn.close()")
+        url_manager.database.conn.close()
+        print("&" * 94, "Done!")
+        exit()
