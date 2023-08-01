@@ -54,7 +54,7 @@ class URLManager:
             self.url.current_permutation_notation = [0] * self.url.path_length
 
     def save_data(self):
-        print("Espera...\n")
+        # print("Espera...\n")
         sleep(10)
         data = self.urls_redirect
         self.database.insert_data(data)
@@ -79,7 +79,6 @@ class URLManager:
         # Ajustar los siguientes índices de la derecha a 0
         for position in range(index + 1, self.url.path_length):
             self.url.current_permutation_notation[position] = 0
-
 
 # ./components/url/url.py
 import requests
@@ -117,7 +116,6 @@ class URL:
             # print(f"{id}. ({status_code}) {url} -> https://{redirect_url}\n")
             url_manager.add_url_data((id, path, status_code, redirect_url))
 
-
 # ./main.py
 from components.url.url import URL
 from components.url.url_manager import URLManager
@@ -146,7 +144,7 @@ if __name__ == "__main__":
         print("#" * 94, "executor.shutdown(cancel_futures=True)\n")
         url_manager.executor.shutdown(cancel_futures=True)
         print("*" * 94, "database.conn.close()")
-        database.conn.close()
+        url_manager.database.conn.close()
         print("&" * 94, "Done!")
         exit()
 
@@ -161,6 +159,7 @@ SHORTURL_DOMAINS = {
     3: ["www.shorturl.at", 5],
     4: ["tinyurl.com", 6],
 }
+
 # ./database/database_connection.py
 import psycopg2
 import sqlite3
@@ -248,3 +247,4 @@ class Database:
         result = self.cursor.fetchone()
 
         return result[0]
+
