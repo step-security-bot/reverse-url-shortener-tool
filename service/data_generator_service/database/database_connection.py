@@ -1,26 +1,34 @@
-import psycopg2
 import sqlite3
-from decouple import config as getenv
 
+import click
+import mysql.connector
+from decouple import config as getenv
 
 class Database:
     def __init__(self):
         self.table_name = "url_data"
-        if getenv("APP_DEBUG") == "true":
+        if getenv("APP_SERVICE_DEBUG") == "true":
             self.conn = sqlite3.connect(
                 "./service/data_generator_service/database/my_database.db"
             )
         else:
-            self.conn = psycopg2.connect(
-                host=getenv("DB_HOST"),
-                port=getenv("DB_PORT"),
-                database=getenv("DB_DATABASE"),
-                user=getenv("DB_USERNAME"),
-                password=getenv("DB_PASSWORD"),
+            click.echo("Starting...")
+            self.conn = mysql.connector.connect(
+                host=getenv("DB_HOST", "127.0.0.1"),
+                port=getenv("DB_PORT", "3306"),
+                database=getenv("DB_DATABASE", "forge"),
+                user=getenv("DB_USERNAME", "forge"),
+                password=getenv("DB_PASSWORD", ""),
+                charset="utf8mb4",
+                collation="utf8mb4_unicode_ci"
             )
+
+        if self.conn.is_connected():
+            click.echo("Conexión exitosa a la base de datos MySQL.")
 
         self.cursor = self.conn.cursor()
 
+        click.echo("Creating table...")
         self.cursor.execute(
             f"""CREATE TABLE IF NOT EXISTS {self.table_name} (
                 id INTEGER PRIMARY KEY NOT NULL,
@@ -30,8 +38,10 @@ class Database:
                 creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )"""
         )
+        click.echo("Table done!")
 
         self.conn.commit()
+        click.echo("Commit done!")
 
     def insert_data(self, data: list[tuple]):
         print("\nGuardando datos...", end=" ")
@@ -46,18 +56,14 @@ class Database:
                 """,
                 data,
             )
-        elif isinstance(self.conn, psycopg2.extensions.connection):
-            # Para PostgreSQL (marcador de posición '%s')
+        else:
+            # Para MySQL (marcador de posición '%s')
             self.cursor.executemany(
                 f"""
                 INSERT INTO {self.table_name} (id, path, status_code, redirect_url)
                 VALUES (%s, %s, %s, %s)
                 """,
                 data,
-            )
-        else:
-            raise ValueError(
-                "Tipo de conexión desconocido. No se puede determinar el tipo de marcador de posición."
             )
 
         self.conn.commit()

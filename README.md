@@ -13,6 +13,7 @@ git clone https://github.com/meyer-pidiache/reverse-url-shortener-tool.git
 2. Navigate to the project directory:
 ```shell
 cd reverse-url-shortener-tool
+git checkout 851b969
 ```
 
 ## Usage
