@@ -2,6 +2,7 @@ import mysql.connector
 from mysql.connector import Error
 from decouple import config as getenv
 
+
 def connect_to_mysql():
     try:
         connection = mysql.connector.connect(
@@ -11,7 +12,7 @@ def connect_to_mysql():
             user=getenv("DB_USERNAME", "forge"),
             password=getenv("DB_PASSWORD", ""),
             charset="utf8mb4",
-            collation="utf8mb4_unicode_ci"
+            collation="utf8mb4_unicode_ci",
         )
 
         if connection.is_connected():
@@ -22,6 +23,7 @@ def connect_to_mysql():
         print(f"Error al conectarse a la base de datos: {e}")
 
     return None
+
 
 # Ejemplo de uso
 connection = connect_to_mysql()

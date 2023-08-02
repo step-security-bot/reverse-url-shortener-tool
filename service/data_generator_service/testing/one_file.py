@@ -80,6 +80,7 @@ class URLManager:
         for position in range(index + 1, self.url.path_length):
             self.url.current_permutation_notation[position] = 0
 
+
 # ./components/url/url.py
 import requests
 
@@ -115,6 +116,7 @@ class URL:
             redirect_url = response.url[8:]
             # print(f"{id}. ({status_code}) {url} -> https://{redirect_url}\n")
             url_manager.add_url_data((id, path, status_code, redirect_url))
+
 
 # ./main.py
 from components.url.url import URL
@@ -247,4 +249,3 @@ class Database:
         result = self.cursor.fetchone()
 
         return result[0]
-

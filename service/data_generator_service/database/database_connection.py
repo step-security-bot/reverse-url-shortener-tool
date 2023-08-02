@@ -4,9 +4,10 @@ import click
 import mysql.connector
 from decouple import config as getenv
 
+
 class Database:
     def __init__(self):
-        self.table_name = "url_data"
+        self.table_name = "urls"
         if getenv("APP_SERVICE_DEBUG") == "true":
             self.conn = sqlite3.connect(
                 "./service/data_generator_service/database/my_database.db"
@@ -20,28 +21,13 @@ class Database:
                 user=getenv("DB_USERNAME", "forge"),
                 password=getenv("DB_PASSWORD", ""),
                 charset="utf8mb4",
-                collation="utf8mb4_unicode_ci"
+                collation="utf8mb4_unicode_ci",
             )
 
         if self.conn.is_connected():
             click.echo("Conexión exitosa a la base de datos MySQL.")
 
         self.cursor = self.conn.cursor()
-
-        click.echo("Creating table...")
-        self.cursor.execute(
-            f"""CREATE TABLE IF NOT EXISTS {self.table_name} (
-                id INTEGER PRIMARY KEY NOT NULL,
-                path VARCHAR(10),
-                status_code INTEGER,
-                redirect_url TEXT,
-                creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )"""
-        )
-        click.echo("Table done!")
-
-        self.conn.commit()
-        click.echo("Commit done!")
 
     def insert_data(self, data: list[tuple]):
         print("\nGuardando datos...", end=" ")
