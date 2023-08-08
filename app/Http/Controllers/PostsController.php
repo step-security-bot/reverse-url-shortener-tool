@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PostsController extends Controller
 {
@@ -11,6 +12,11 @@ class PostsController extends Controller
      */
     public function index()
     {
+        // https://laravel.com/docs/10.x/queries
+        $posts = DB::statement('SELECT * FROM posts');
+
+        dd($posts); 
+
         return view('blog.index');
     }
 
